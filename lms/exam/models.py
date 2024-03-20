@@ -4,12 +4,8 @@ from django.urls import reverse
 from django.db.models import Q
 from django.db.models.signals import pre_save, post_save, post_delete
 from django.dispatch import receiver
-
-
 import re
 import json
-from django.db import models
-from django.urls import reverse
 from django.core.exceptions import ValidationError, ImproperlyConfigured
 from django.core.validators import (
     MaxValueValidator,
@@ -17,26 +13,32 @@ from django.core.validators import (
 )
 from django.utils.translation import gettext_lazy as _
 from django.utils.timezone import now
-from django.conf import settings
+from lms import settings
 from django.db.models.signals import pre_save
-from django.db.models import Q
 from model_utils.managers import InheritanceManager
-from .models import User
-from .models import Course
+from .models import User, Course
 from .utils import unique_slug_generator
 
+from .utils import *
 
 
 # project import
-from .utils import *
+
 
 # Create your models here.
 class User(models.Model):
     pass
 
-
-
 class Customer(models.Model):
+    pass
+
+class UserRolePrivilages(models.Model):
+    pass
+
+class Resources(models.Model):
+    pass
+
+class Customer_Resources(models.Model):
     pass
 
 
@@ -76,6 +78,7 @@ class Course(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     active = models.BooleanField(default= False)
     original_course = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True)
+    version_number = models.IntegerField(null=True)
     
     objects = CourseManager()
 
@@ -102,54 +105,32 @@ def log_delete(sender, instance, **kwargs):
     ActivityLog.objects.create(message=f"The course '{instance}' has been deleted.")
     
 # -------------------------------------
-    # course version record models
+    # course vstructure models
 # -------------------------------------
-class CourseVersion(models.Model):
-    version_number = models.IntegerField()
-    created_at = models.DateTimeField(auto_now=True)
-    course = models.ForeignKey(Course, on_delete=models.CASCADE)
 
-    def __str__(self):
-        return f"Version {self.version_number} of {self.course}"
-    
-    
-    
-class Section(models.Model):
-    TITLE_NAME = [
+class CourseStructure(models.Model):
+    CONTENT_TYPE = [
         ('reading', 'Reading Material'),
         ('video', 'Video'),
         ('quiz', 'Quiz'),
     ]
-    course = models.ForeignKey(Course, on_delete=models.CASCADE)
-    title = models.CharField(max_length=10, choices=TITLE_NAME)
-    section_number = models.PositiveBigIntegerField() # need to make logic to keep it unique within each course
-
-    class Meta:
-        ordering = ['section_number']
-        
-class SectionContent(models.Model):
-    section = models.ForeignKey(Section, on_delete=models.CASCADE)
-    content_type = models.CharField(max_length=10)
+    order_number = models.PositiveIntegerField()
+    content_type = models.CharField(max_length=10, choices=CONTENT_TYPE)
     content_id = models.PositiveIntegerField()
     
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if self.section.title == 'reading':
-            self.content_type = 'reading'
-        elif self.section.title == 'video':
-            self.content_type = 'video'
-        elif self.section.title == 'quiz':
-            self.content_type = 'quiz'
-
+    class Meta:
+        ordering = ['order_number']
+                                    
+    # will be used when get request will be made to course structure model
     def get_content(self):
-        if self.section.title == 'reading':
+        if self.content_type == 'reading':
             return UploadReadingMaterial.objects.get(pk=self.content_id)
-        elif self.section.title == 'video':
+        elif self.content_type == 'video':
             return UploadVideo.objects.get(pk=self.content_id)
-        elif self.section.title == 'quiz':
+        elif self.content_type == 'quiz':
             return Quiz.objects.get(pk=self.content_id)
         return None
-    
+
 # -------------------------------------
     # course register record models
 # -------------------------------------
@@ -167,7 +148,7 @@ class CourseRegisterRecord(models.Model):
     # course enrollment models
 # -------------------------------------
     
-class Course_Enrollment(models.Model):
+class CourseEnrollment(models.Model):
     user = models.ForeignKey(User, related_name='enrollments', on_delete=models.CASCADE)
     course = models.ForeignKey(Course, related_name='enrolled_courses', on_delete=models.CASCADE)
     enrolled_at = models.DateTimeField(auto_now=True)
@@ -188,50 +169,15 @@ class UploadReadingMaterial(models.Model):
     title = models.CharField(max_length=100)
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     reading_content =models.TextField()
-    # reading_content = models.FileField(
-    #     upload_to="course_files/",
-    #     help_text="Valid Files: pdf, docx, doc, xls, xlsx, ppt, pptx, zip, rar, 7zip",
-    #     validators=[
-    #         FileExtensionValidator(
-    #             [
-    #                 "pdf",
-    #                 "docx",
-    #                 "doc",
-    #                 "xls",
-    #                 "xlsx",
-    #                 "ppt",
-    #                 "pptx",
-    #                 "zip",
-    #                 "rar",
-    #                 "7zip",
-    #             ]
-    #         )
-    #     ],
-    # )
     uploaded_at = models.DateTimeField(auto_now=False, auto_now_add=True, null=True) # needed to passed when material is uploaded for better working
     updated_at = models.DateTimeField(auto_now=True, auto_now_add=False, null=True)
     
     def __str__(self):
         return self.title
     
-    # def get_extension_short(self):
-    #     ext = str(self.file).split(".")
-    #     ext = ext[len(ext) - 1]
-
-    #     if ext in ("doc", "docx"):
-    #         return "word"
-    #     elif ext == "pdf":
-    #         return "pdf"
-    #     elif ext in ("xls", "xlsx"):
-    #         return "excel"
-    #     elif ext in ("ppt", "pptx"):
-    #         return "powerpoint"
-    #     elif ext in ("zip", "rar", "7zip"):
-    #         return "archive"
-        
-        def delete(self, *args, **kwargs):
-            self.reading_content.delete()
-            super().delete(*args, **kwargs)
+    def delete(self, *args, **kwargs):
+        self.reading_content.delete()
+        super().delete(*args, **kwargs)
             
 @receiver(post_save, sender=UploadReadingMaterial)
 def log_save(sender, instance, created, **kwargs):
@@ -270,6 +216,7 @@ class UploadVideo(models.Model):
     )
     summary = models.TextField(null=True, blank=True)
     uploaded_at = models.DateTimeField(auto_now=False, auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, auto_now_add=False, null=True)
     
     def __str__(self):
         return str(self.title)
@@ -331,7 +278,6 @@ class Quiz(models.Model):
         blank=True,
         help_text=_("A detailed description of the quiz"),
     )
-    
     random_order = models.BooleanField(
         blank=False,
         default=False,
@@ -346,7 +292,6 @@ class Quiz(models.Model):
             "Correct answer is NOT shown after question. Answers displayed at the end."
         ),
     )
-
     exam_paper = models.BooleanField(
         blank=False,
         default=False,
@@ -361,7 +306,6 @@ class Quiz(models.Model):
         verbose_name=_("Single Attempt"),
         help_text=_("If yes, only one attempt by a user will be permitted."),
     )
-
     pass_mark = models.SmallIntegerField(
         blank=True,
         default=50,
