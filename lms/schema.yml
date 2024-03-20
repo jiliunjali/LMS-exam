@@ -1,0 +1,275 @@
+openapi: 3.0.3
+info:
+  title: LMS
+  version: 0.0.0
+paths:
+  /api/schema:
+    get:
+      operationId: api_schema_retrieve
+      description: |-
+        OpenApi3 schema for this API. Format can be selected via content negotiation.
+
+        - YAML: application/vnd.oai.openapi
+        - JSON: application/vnd.oai.openapi+json
+      parameters:
+      - in: query
+        name: format
+        schema:
+          type: string
+          enum:
+          - json
+          - yaml
+      - in: query
+        name: lang
+        schema:
+          type: string
+          enum:
+          - af
+          - ar
+          - ar-dz
+          - ast
+          - az
+          - be
+          - bg
+          - bn
+          - br
+          - bs
+          - ca
+          - cs
+          - cy
+          - da
+          - de
+          - dsb
+          - el
+          - en
+          - en-au
+          - en-gb
+          - eo
+          - es
+          - es-ar
+          - es-co
+          - es-mx
+          - es-ni
+          - es-ve
+          - et
+          - eu
+          - fa
+          - fi
+          - fr
+          - fy
+          - ga
+          - gd
+          - gl
+          - he
+          - hi
+          - hr
+          - hsb
+          - hu
+          - hy
+          - ia
+          - id
+          - ig
+          - io
+          - is
+          - it
+          - ja
+          - ka
+          - kab
+          - kk
+          - km
+          - kn
+          - ko
+          - ky
+          - lb
+          - lt
+          - lv
+          - mk
+          - ml
+          - mn
+          - mr
+          - ms
+          - my
+          - nb
+          - ne
+          - nl
+          - nn
+          - os
+          - pa
+          - pl
+          - pt
+          - pt-br
+          - ro
+          - ru
+          - sk
+          - sl
+          - sq
+          - sr
+          - sr-latn
+          - sv
+          - sw
+          - ta
+          - te
+          - tg
+          - th
+          - tk
+          - tr
+          - tt
+          - udm
+          - uk
+          - ur
+          - uz
+          - vi
+          - zh-hans
+          - zh-hant
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/vnd.oai.openapi:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/yaml:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/vnd.oai.openapi+json:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /exam/client-admin-courses/:
+    get:
+      operationId: exam_client_admin_courses_retrieve
+      description: |-
+        this API is used to retrieve course which are allocated or register under client admin's company, which will be retrieved from user's customer id.
+        it is triggered with GET request.
+      tags:
+      - exam
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /exam/client-admin-employees/:
+    get:
+      operationId: exam_client_admin_employees_retrieve
+      description: |-
+        this API is used to retrieve list of employees which have same costumer id as client-admin himself(current logged in user).
+        it is triggered with GET request.
+      tags:
+      - exam
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /exam/courses/:
+    get:
+      operationId: exam_courses_retrieve
+      description: |-
+        this API is used to retrive data from course table regarding all courses which are active to be used.
+        it is triggered with GET request.
+      tags:
+      - exam
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /exam/customers/:
+    get:
+      operationId: exam_customers_retrieve
+      description: |-
+        this API is used to retrieve data especially names from costumer table.
+        it is triggered with GET request.
+      tags:
+      - exam
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /exam/enrollments/:
+    get:
+      operationId: exam_enrollments_retrieve
+      description: |-
+        this API i used to display the course enrollment table's instance record, of it's company's employees.
+        it is triggered with GET request.
+      tags:
+      - exam
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /exam/enrollments/assign/:
+    post:
+      operationId: exam_enrollments_assign_create
+      description: |-
+        this API is used to create new records in course enrollment table by assigning the course(s) to user(s) and and enable visibility of course to user(s).    required inputs : list of courses and list of users
+
+        Method: POST
+        Parameters:
+            - courses (list of integers): IDs of courses to assign.
+            - users (list of integers): IDs of users to assign the courses.
+
+        It is triggered with POST request.
+      tags:
+      - exam
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /exam/enrollments/unassign/:
+    post:
+      operationId: exam_enrollments_unassign_create
+      description: |-
+        this API is used to unassign course to specified user(s) by turning the active false , and hide visibility of course to user(s).
+        required inputs : list of ids of instance of course enrollment table
+
+        Method: POST
+        Parameters:
+            - enrollment_ids (list of integers): IDs of course enrollment instances to unassign.
+
+        It is triggered with POST request.
+      tags:
+      - exam
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+components:
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid
