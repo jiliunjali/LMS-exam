@@ -36,7 +36,7 @@ from .serializers import (
 #for course registration page
 class ActiveCourseListView(generics.ListAPIView):
     """
-    this API is used to retrive data from course table regarding all courses which are active to be used.
+    this API is used to retrieve data from course table regarding all courses which are active to be used.
     it is triggered with GET request.
     
     to be used for registering the courses.
@@ -51,7 +51,7 @@ class CostumerListView(generics.ListAPIView):
     it is triggered with GET request.
     """
     '''
-        TODO :need to understand if there is costumer_role_privilage type of thing and get what resource privilages they might have.
+        TODO :need to understand if there is costumer_role_privilege type of thing and get what resource privileges they might have.
     '''
     # queryset = Costumer.objects.all() # may use filter with help of role if they are assigned any to , especially that they can use lms
     # serializer_class = CostumerDisplaySerializer
@@ -114,35 +114,35 @@ class ClientAdminEmployeeListView(APIView):
     def get (self,request, *args, **kwargs):
         pass
 
-class AssignCourseEnrollmentView(APIView):
-    """
-    this API is used to create new records in course enrollment table by assigning the course(s) to user(s) and and enable visibility of course to user(s).    required inputs : list of courses and list of users
+# class AssignCourseEnrollmentView(APIView):
+#     """
+#     this API is used to create new records in course enrollment table by assigning the course(s) to user(s) and and enable visibility of course to user(s).    required inputs : list of courses and list of users
     
-    Method: POST
-    Parameters:
-        - courses (list of integers): IDs of courses to assign.
-        - users (list of integers): IDs of users to assign the courses.
+#     Method: POST
+#     Parameters:
+#         - courses (list of integers): IDs of courses to assign.
+#         - users (list of integers): IDs of users to assign the courses.
     
-    It is triggered with POST request.
+#     It is triggered with POST request.
     
-    """
-    def post (self,request, *args, **kwargs):
-        pass
+#     """
+#     def post (self,request, *args, **kwargs):
+#         pass
 
-class UnAssignCourseEnrollmentView(APIView):
-    """
-    this API is used to unassign course to specified user(s) by turning the active false , and hide visibility of course to user(s).
-    required inputs : list of ids of instance of course enrollment table
+# class UnAssignCourseEnrollmentView(APIView):
+#     """
+#     this API is used to unassign course to specified user(s) by turning the active false , and hide visibility of course to user(s).
+#     required inputs : list of ids of instance of course enrollment table
     
-    Method: POST
-    Parameters:
-        - enrollment_ids (list of integers): IDs of course enrollment instances to unassign.
+#     Method: POST
+#     Parameters:
+#         - enrollment_ids (list of integers): IDs of course enrollment instances to unassign.
     
-    It is triggered with POST request.
+#     It is triggered with POST request.
     
-    """
-    def post(self,request, *args, **kwargs):
-        pass
+#     """
+#     def post(self,request, *args, **kwargs):
+#         pass
 
 class CourseEnrollmentDisplayView(generics.ListAPIView):
     """

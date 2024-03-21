@@ -20,27 +20,13 @@ from .models import User, Course
 from .utils import unique_slug_generator
 
 from .utils import *
+from exam.models.coremodels import *
 
 
 # project import
 
 
 # Create your models here.
-class User(models.Model):
-    pass
-
-class Customer(models.Model):
-    pass
-
-class UserRolePrivilages(models.Model):
-    pass
-
-class Resources(models.Model):
-    pass
-
-class Customer_Resources(models.Model):
-    pass
-
 
 # -------------------------------------
 # -------------------------------------
@@ -104,8 +90,9 @@ def log_save(sender, instance, created, **kwargs):
 def log_delete(sender, instance, **kwargs):
     ActivityLog.objects.create(message=f"The course '{instance}' has been deleted.")
     
+    
 # -------------------------------------
-    # course vstructure models
+    # course structure models
 # -------------------------------------
 
 class CourseStructure(models.Model):
@@ -114,22 +101,14 @@ class CourseStructure(models.Model):
         ('video', 'Video'),
         ('quiz', 'Quiz'),
     ]
+    course = models.ForeignKey(Course, related_name="course_structure", on_delete=models.CASCADE, null =  False)
     order_number = models.PositiveIntegerField()
     content_type = models.CharField(max_length=10, choices=CONTENT_TYPE)
     content_id = models.PositiveIntegerField()
     
     class Meta:
         ordering = ['order_number']
-                                    
-    # will be used when get request will be made to course structure model
-    def get_content(self):
-        if self.content_type == 'reading':
-            return UploadReadingMaterial.objects.get(pk=self.content_id)
-        elif self.content_type == 'video':
-            return UploadVideo.objects.get(pk=self.content_id)
-        elif self.content_type == 'quiz':
-            return Quiz.objects.get(pk=self.content_id)
-        return None
+
 
 # -------------------------------------
     # course register record models
@@ -167,7 +146,7 @@ class CourseEnrollment(models.Model):
     
 class UploadReadingMaterial(models.Model):
     title = models.CharField(max_length=100)
-    course = models.ForeignKey(Course, on_delete=models.CASCADE)
+    courses = models.ManyToManyField(Course, related_name='reading_materials')
     reading_content =models.TextField()
     uploaded_at = models.DateTimeField(auto_now=False, auto_now_add=True, null=True) # needed to passed when material is uploaded for better working
     updated_at = models.DateTimeField(auto_now=True, auto_now_add=False, null=True)
@@ -206,7 +185,7 @@ def log_delete(sender, instance, **kwargs):
 class UploadVideo(models.Model):
     title = models.CharField(max_length=100)
     slug = models.SlugField(blank=True, unique=True)
-    course = models.ForeignKey(Course, on_delete=models.CASCADE)
+    courses = models.ManyToManyField(Course, related_name='video_materials')
     video = models.FileField(
         upload_to="course_videos/",
         help_text="Valid video formats: mp4, mkv, wmv, 3gp, f4v, avi, mp3",
@@ -269,8 +248,8 @@ CHOICE_ORDER_OPTIONS = (
 )
 
 class Quiz(models.Model):
-    quizzes = models.ManyToManyField(Question, through='QuizQuestion')
-    course = models.ForeignKey(Course, on_delete=models.CASCADE, null=True)
+
+    courses = models.ManyToManyField(Course, related_name='quizzes')
     title = models.CharField(verbose_name=_("Title"), max_length=60, blank=False)
     slug = models.SlugField(blank=True, unique=True)
     description = models.TextField(
@@ -278,12 +257,8 @@ class Quiz(models.Model):
         blank=True,
         help_text=_("A detailed description of the quiz"),
     )
-    random_order = models.BooleanField(
-        blank=False,
-        default=False,
-        verbose_name=_("Random Order"),
-        help_text=_("Display the questions in a random order or as they are set?"),
-    )
+
+    
     answers_at_end = models.BooleanField(
         blank=False,
         default=False,
@@ -353,6 +328,7 @@ pre_save.connect(quiz_pre_save_receiver, sender=Quiz)
     
     
 class Question(models.Model):
+    quizzes = models.ManyToManyField(Quiz, related_name='questions')
     figure = models.ImageField(                             
         upload_to="uploads/%Y/%m/%d",
         blank=True,
@@ -578,8 +554,11 @@ class QuizAttemptHistory(models.Model):
         total = self.get_max_score
         return answered, total
 
-class QuizQuestion(models.Model):
-    quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE)
-    question = models.ForeignKey(Question, on_delete=models.CASCADE)
-    # Additional fields specific to the relationship
-    active = models.BooleanField(default=True)
+# class QuizQuestion(models.Model):
+#     quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE)
+#     question = models.ForeignKey(Question, on_delete=models.CASCADE)
+#     # Additional fields specific to the relationship
+#     active = models.BooleanField(default=True)
+    
+class Progress(models.Model):
+    pass
