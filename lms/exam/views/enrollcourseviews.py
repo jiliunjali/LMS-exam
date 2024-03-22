@@ -6,10 +6,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import generics
-from exam.models import (
-    # User,
+from exam.models.allmodels import (
     Course,
-    Customer,
     CourseRegisterRecord,
     CourseEnrollment,
     Progress,
@@ -17,10 +15,10 @@ from exam.models import (
     Question,
     QuizAttemptHistory
 )
-from exam.serializers import (
-    CostumerDisplaySerializer,
-    CourseDisplaySerializer,
-)
+# from exam.serializers import (
+#     CostumerDisplaySerializer,
+#     CourseDisplaySerializer,
+# )
 from django.views.generic import (
     DetailView,
     ListView,
@@ -36,7 +34,7 @@ from exam.forms import (
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404, render, redirect
 from django.utils.decorators import method_decorator
-from exam.models.coremodels import *
+# from exam.models.coremodels import *
 
 # for enrollment feature
 # will be displayed to employer/client-admin only

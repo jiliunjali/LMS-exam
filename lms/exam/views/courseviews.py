@@ -6,10 +6,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import generics
-from exam.models import (
-    # User,
+from exam.models.allmodels import (
     Course,
-    Customer,
     CourseRegisterRecord,
     CourseEnrollment,
     Progress,
@@ -17,10 +15,10 @@ from exam.models import (
     Question,
     QuizAttemptHistory
 )
-from exam.serializers import (
-    CostumerDisplaySerializer,
-    CourseDisplaySerializer,
-)
+# from exam.serializers import (
+#     CostumerDisplaySerializer,
+#     CourseDisplaySerializer,
+# )
 
 from django.views.generic import (
     DetailView,
@@ -40,6 +38,7 @@ from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404, render, redirect
 from django.utils.decorators import method_decorator
 from exam.models.coremodels import *
+from exam.serializers.courseserializers import *
 
 
 class AllCourseListDisplayView(APIView):
@@ -60,7 +59,15 @@ class AllCourseListDisplayView(APIView):
                     original_course 
                     version_number
     """
-    pass
+    def get(self, request, format=None):
+        try:
+            # Fetch all courses
+            courses = Course.objects.all()
+            # Serialize the courses data
+            serializer = CourseDisplaySerializer(courses, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class ActiveCourseListDisplayView(APIView):
     """
@@ -77,7 +84,15 @@ class ActiveCourseListDisplayView(APIView):
                     original_course [title to be extracted on frontend]
                     version_number
     """
-    pass
+    def get(self, request, format=None):
+        try:
+            # Fetch all courses
+            courses = Course.objects.filter(active=True)
+            # Serialize the courses data
+            serializer = CourseDisplaySerializer(courses, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class RegisterCoursesOnCostumerListDisplayView(APIView):
     """
@@ -101,7 +116,33 @@ class RegisterCoursesOnCostumerListDisplayView(APIView):
             make list of courses that are filtered 
             get the instances of Courses whose id is in list.
     '''
-    pass
+    def get(self, request, format=None):
+        try:
+            # ********************************
+            # to be originally used
+            '''# Extract user from request
+            user = request.user
+            print(user)
+            # Extract customer ID from user
+            customer_id = user.customer.id'''
+            # ********************************
+            # =================================================================
+            user_header = request.headers.get("user")
+            if user_header:
+                user_data = json.loads(user_header)
+                customer_id = user_data.get("customer")
+            # =================================================================
+            # Filter CourseRegisterRecord with customer ID
+            course_register_records = CourseRegisterRecord.objects.filter(customer=customer_id)
+            # Get the list of course IDs
+            course_ids = [record.course_id for record in course_register_records]
+            # Get instances of Course whose IDs are in the list
+            courses = Course.objects.filter(id__in=course_ids)
+            # Serialize the courses data
+            serializer = ClientAdminRegisteredCourseDisplaySerializer(courses, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class UnRegisteredCoursesOnCostumerListDisplayView(APIView):
     """

@@ -16,11 +16,11 @@ from django.utils.timezone import now
 from lms import settings
 from django.db.models.signals import pre_save
 from model_utils.managers import InheritanceManager
-from .models import User, Course
-from .utils import unique_slug_generator
 
-from .utils import *
-from exam.models.coremodels import *
+from exam.utils import unique_slug_generator
+
+# from exam.utils import *
+from .coremodels import User, Customer #, UserRolePrivileges, Resources, CustomerResources
 
 
 # project import

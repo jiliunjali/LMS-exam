@@ -142,14 +142,14 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # DRF setup
 REST_FRAMEWORK = {
-    "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.IsAuthenticated",
-    ],
-    "DEFAULT_AUTHENTICATION_CLASSES": [
-        # "custom_authentication.authentication.BasicAuthentication",
-        "rest_framework.authentication.SessionAuthentication",
-        "rest_framework.authentication.BasicAuthentication",
-    ],
+    # "DEFAULT_PERMISSION_CLASSES": [
+    #     "rest_framework.permissions.IsAuthenticated",
+    # ],
+    # "DEFAULT_AUTHENTICATION_CLASSES": [
+    #     # "custom_authentication.authentication.BasicAuthentication",
+    #     "rest_framework.authentication.SessionAuthentication",
+    #     "rest_framework.authentication.BasicAuthentication",
+    # ],
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema'
     }
 
@@ -157,6 +157,8 @@ SPECTACULAR_SETTINGS = {
     'TITLE' : 'LMS',
 }
 
+# Append trailing slash to URLs
+APPEND_SLASH = True
 
 # EMAIL_BACKEND = os.getenv(
 #     "EMAIL_BACKEND", default="django.core.mail.backends.smtp.EmailBackend"

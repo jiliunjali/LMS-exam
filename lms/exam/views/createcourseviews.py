@@ -6,10 +6,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import generics
-from exam.models import (
-    # User,
+from exam.models.allmodels import (
     Course,
-    Customer,
     CourseRegisterRecord,
     CourseEnrollment,
     Progress,
@@ -17,10 +15,10 @@ from exam.models import (
     Question,
     QuizAttemptHistory
 )
-from exam.serializers import (
-    CostumerDisplaySerializer,
-    CourseDisplaySerializer,
-)
+# from exam.serializers import (
+#     CostumerDisplaySerializer,
+#     CourseDisplaySerializer,
+# )
 from django.views.generic import (
     DetailView,
     ListView,
@@ -36,7 +34,7 @@ from exam.forms import (
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404, render, redirect
 from django.utils.decorators import method_decorator
-from exam.models.coremodels import *
+# from exam.models.coremodels import *
 
 class CreateCourseView(APIView):
     """
@@ -154,7 +152,38 @@ class CreateQuestionView(APIView):
         view to create the instance of question inside quiz
         triggers with POST request.
         in URL : course_id and quiz_id in which we are inputting the content will be passed
+        
+            check if course.original_course of course in url ?
+                            if null :
+                                        check if course is active or not ?
+                                                        if active:
+                                                                not allowed
+                                                        inactive:
+                                                                allow, means create new instance of question and then related choices, for the quiz which is related to the course, question is added to it. 
+                            not null[means this is a derived course]:
+                                        check if course is active or not ?
+                                                        if active:
+                                                                not allowed
+                                                        inactive:
+                                                                ask if we want change to be reflected in others too, like earlier versions?
+                                                                                        if yes:
+                                                                                                edit the same instance of quiz.
+                                                                                        if not:
+                                                                                                check if request body is empty or not?
+                                                                                                            if no :
+                                                                                                                    create new instance of quiz in quiz table.
+                                                                                                                                        what to keep questions of quiz in url in this one too?
+                                                                                                                                            yes:
+                                                                                                                                                for new quiz instance created quiz in quiz table for all relations quiz in url had with questions in manytomany relation copy them for it, using createquestionview for new instance of quizID
+                                                                                                                                                create new instance of question in request body.
+                                                                                                                                            no:
+                                                                                                                                                then just make new instance of question in question tale and make relation of it with quiz.
+                                                                                                                    and pass id of this instance to replace where instance was written in course_structure table for course in url
+                                                                                                            if yes :
+                                                                                                                    do nothing and return the earlier instance only.
+                    
         while creating instance :
+                    quiz = from url
                     figure = request body
                     content = request body
                     explanation = request body

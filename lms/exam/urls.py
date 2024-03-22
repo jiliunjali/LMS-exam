@@ -27,6 +27,7 @@ from .views.registercourseviews import (
     LMSCustomerListView,
     CreateCourseRegisterRecordView,
     DisplayCourseRegisterRecordView,
+    DeleteCourseRegisterRecordView
 )
 from .views.enrollcourseviews import (
     RegisteredCourseListView,
@@ -63,9 +64,9 @@ urlpatterns = [
     path('courses/enrolled/', EnrolledCoursesListDisplayView.as_view(), name='enrolled-courses-list'),
     path('course/<int:course_id>/', CourseInstanceDetailDisplayView.as_view(), name='course'),
     path('course-structure/<int:course_id>/', SingleCourseStructureListDisplayView.as_view(), name='course-structure'),
-    path('course/<int:course_id>/reading/<int : content_id>', ReadingMaterialInstanceDisplayView.as_view(), name='course-reading-material-instance'),
-    path('course/<int:course_id>/video/<int : content_id>', VideoInstanceDisplayView.as_view(), name='course-video-instance'),
-    path('course/<int:course_id>/quiz/<int : content_id>', QuizInstanceDisplayView.as_view(), name='course-quiz-instance'),
+    path('course/<int:course_id>/reading/<int:content_id>', ReadingMaterialInstanceDisplayView.as_view(), name='course-reading-material-instance'),
+    path('course/<int:course_id>/video/<int:content_id>', VideoInstanceDisplayView.as_view(), name='course-video-instance'),
+    path('course/<int:course_id>/quiz/<int:content_id>', QuizInstanceDisplayView.as_view(), name='course-quiz-instance'),
     
     
     #registercourseviews.py views url
@@ -74,6 +75,8 @@ urlpatterns = [
     path('lms-customer/', LMSCustomerListView.as_view(), name='lms-customer-list'),
     path('create/course-register-record/', CreateCourseRegisterRecordView.as_view(), name='create-course-register-record'),
     path('display/course-register-record/', DisplayCourseRegisterRecordView.as_view(), name='course-register-record-list'),
+    path('delete/course-register-record/', DeleteCourseRegisterRecordView.as_view(), name='delete-course-register-record-list'),
+
     
     #enrollcourseviews.py views url
     path('display/registered-course/', RegisteredCourseListView.as_view(), name='register-course-list'),

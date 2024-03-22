@@ -147,78 +147,26 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
-  /exam/client-admin-courses/:
+  /exam/courses/active/v1/:
     get:
-      operationId: exam_client_admin_courses_retrieve
+      operationId: exam_courses_active_v1_retrieve
       description: |-
-        this API is used to retrieve course which are allocated or register under client admin's company, which will be retrieved from user's customer id.
-        it is triggered with GET request.
+        view to display [active] courses list from course table that have original_course = null and version_number = 1
+        trigger with GET request
+        should be allowed for only [super admin].
+
+        table : Course
+
+        what will be displayed:
+                    id
+                    title
+                    updated_at
+                    version_number
       tags:
       - exam
       security:
       - cookieAuth: []
       - basicAuth: []
-      - {}
-      responses:
-        '200':
-          description: No response body
-  /exam/client-admin-employees/:
-    get:
-      operationId: exam_client_admin_employees_retrieve
-      description: |-
-        this API is used to retrieve list of employees which have same costumer id as client-admin himself(current logged in user).
-        it is triggered with GET request.
-      tags:
-      - exam
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - {}
-      responses:
-        '200':
-          description: No response body
-  /exam/courses/:
-    get:
-      operationId: exam_courses_retrieve
-      description: |-
-        this API is used to retrive data from course table regarding all courses which are active to be used.
-        it is triggered with GET request.
-      tags:
-      - exam
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - {}
-      responses:
-        '200':
-          description: No response body
-  /exam/customers/:
-    get:
-      operationId: exam_customers_retrieve
-      description: |-
-        this API is used to retrieve data especially names from costumer table.
-        it is triggered with GET request.
-      tags:
-      - exam
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - {}
-      responses:
-        '200':
-          description: No response body
-  /exam/enrollments/:
-    get:
-      operationId: exam_enrollments_retrieve
-      description: |-
-        this API i used to display the course enrollment table's instance record, of it's company's employees.
-        it is triggered with GET request.
-      tags:
-      - exam
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - {}
       responses:
         '200':
           description: No response body
@@ -226,12 +174,12 @@ paths:
     post:
       operationId: exam_enrollments_assign_create
       description: |-
-        this API is used to create new records in course enrollment table by assigning the course(s) to user(s) and and enable visibility of course to user(s).    required inputs : list of courses and list of users
+        this API is used to assign course to specified user(s) for all users in courseenrollment table who have active false
+        in request body : list of ids of instance of course enrollment table
 
         Method: POST
         Parameters:
-            - courses (list of integers): IDs of courses to assign.
-            - users (list of integers): IDs of users to assign the courses.
+            - enrollment_ids (list of integers): IDs of course enrollment instances to assign, who have active status false for now
 
         It is triggered with POST request.
       tags:
@@ -239,7 +187,6 @@ paths:
       security:
       - cookieAuth: []
       - basicAuth: []
-      - {}
       responses:
         '200':
           description: No response body
@@ -260,7 +207,6 @@ paths:
       security:
       - cookieAuth: []
       - basicAuth: []
-      - {}
       responses:
         '200':
           description: No response body
