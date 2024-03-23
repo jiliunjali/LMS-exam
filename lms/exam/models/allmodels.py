@@ -57,7 +57,7 @@ class CourseManager(models.Manager):
         return queryset
     
 class Course(models.Model):
-    slug = models.SlugField(blank=True, unique=True)
+    # slug = models.SlugField(blank=True, unique=True)
     title = models.CharField(max_length=200, null=True)
     summary = models.TextField(max_length=200, blank=True, null=True)
     created_at = models.DateTimeField(auto_now=True)
@@ -69,16 +69,13 @@ class Course(models.Model):
     objects = CourseManager()
 
     def __str__(self):
-        return "{0} ({1})".format(self.title, self.code)
+        return self.title
 
-    # def get_absolute_url(self):
-    #     return reverse("course_detail", kwargs={"slug": self.slug})
-    
-def course_pre_save_receiver(sender, instance, *args, **kwargs):
-    if not instance.slug:
-        instance.slug = unique_slug_generator(instance)
+# def course_pre_save_receiver(sender, instance, *args, **kwargs):
+#     if not instance.slug:
+#         instance.slug = unique_slug_generator(instance)
 
-pre_save.connect(course_pre_save_receiver, sender=Course)
+# pre_save.connect(course_pre_save_receiver, sender=Course)
 
 @receiver(post_save, sender=Course)
 def log_save(sender, instance, created, **kwargs):
@@ -151,8 +148,8 @@ class UploadReadingMaterial(models.Model):
     uploaded_at = models.DateTimeField(auto_now=False, auto_now_add=True, null=True) # needed to passed when material is uploaded for better working
     updated_at = models.DateTimeField(auto_now=True, auto_now_add=False, null=True)
     
-    def __str__(self):
-        return self.title
+    # def __str__(self):
+    #     return self.title
     
     def delete(self, *args, **kwargs):
         self.reading_content.delete()
@@ -162,20 +159,23 @@ class UploadReadingMaterial(models.Model):
 def log_save(sender, instance, created, **kwargs):
     if created:
         ActivityLog.objects.create(
-            message=f"The file '{instance.title}' has been uploaded to the course '{instance.course}'."
+            message=f"The file '{instance.title}' has been uploaded to the course '{instance.courses}'."
         )
     else:
         ActivityLog.objects.create(
-            message=f"The file '{instance.title}' of the course '{instance.course}' has been updated."
+            message=f"The file '{instance.title}' of the course '{instance.courses}' has been updated."
         )
 
 
 @receiver(post_delete, sender=UploadReadingMaterial)
 def log_delete(sender, instance, **kwargs):
     ActivityLog.objects.create(
-        message=f"The file '{instance.title}' of the course '{instance.course}' has been deleted."
+        message=f"The file '{instance.title}' of the course '{instance.courses}' has been deleted."
     )
     
+# class ReadingMaterialCourse(models.Model):
+#     upload_reading_material = models.ForeignKey(UploadReadingMaterial, on_delete=models.CASCADE)
+#     course = models.ForeignKey(Course, on_delete=models.CASCADE)
 # TODO: to know how updated_at is updated and how will we will be able to use to update updated at of course
     
 # -------------------------------------
@@ -202,7 +202,7 @@ class UploadVideo(models.Model):
 
     def get_absolute_url(self):
         return reverse(
-            "video_single", kwargs={"slug": self.course.slug, "video_slug": self.slug}
+            "video_single", kwargs={"slug": self.courses.slug, "video_slug": self.slug}
         )
 
     def delete(self, *args, **kwargs):
@@ -221,20 +221,23 @@ pre_save.connect(video_pre_save_receiver, sender=UploadVideo)
 def log_save(sender, instance, created, **kwargs):
     if created:
         ActivityLog.objects.create(
-            message=f"The video '{instance.title}' has been uploaded to the course {instance.course}."
+            message=f"The video '{instance.title}' has been uploaded to the course {instance.courses}."
         )
     else:
         ActivityLog.objects.create(
-            message=f"The video '{instance.title}' of the course '{instance.course}' has been updated."
+            message=f"The video '{instance.title}' of the course '{instance.courses}' has been updated."
         )
 
 
 @receiver(post_delete, sender=UploadVideo)
 def log_delete(sender, instance, **kwargs):
     ActivityLog.objects.create(
-        message=f"The video '{instance.title}' of the course '{instance.course}' has been deleted."
+        message=f"The video '{instance.title}' of the course '{instance.courses}' has been deleted."
     )
     
+# class VideoCourse(models.Model):
+#     upload_video_material = models.ForeignKey(UploadVideo, on_delete=models.CASCADE)
+#     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     
 # -------------------------------------
     # Quiz models
@@ -290,7 +293,7 @@ class Quiz(models.Model):
     )
     created_at = models.DateField(auto_now_add=True)
     updated_at = models.DateField(auto_now=True)
-    active = models.BooleanField(default=False)
+    active = models.BooleanField(default=True)
     
     def save(self, force_insert=False, force_update=False, *args, **kwargs):
         if self.single_attempt is True:
@@ -308,7 +311,7 @@ class Quiz(models.Model):
         verbose_name_plural = _("Quizzes")
 
     def __str__(self):
-        return self.title
+        return f"Quiz: {self.title}"
 
     def get_questions(self):
         return self.question_set.all().select_subclasses()
@@ -319,13 +322,16 @@ class Quiz(models.Model):
 
     def get_absolute_url(self):
         # return reverse('quiz_start_page', kwargs={'pk': self.pk})
-        return reverse("quiz_index", kwargs={"slug": self.course.slug})
+        return reverse("quiz_index", kwargs={"slug": self.courses.slug})
 
 def quiz_pre_save_receiver(sender, instance, *args, **kwargs):
     if not instance.slug:
         instance.slug = unique_slug_generator(instance)
 pre_save.connect(quiz_pre_save_receiver, sender=Quiz)
     
+# class QuizCourse(models.Model):
+#     quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE)
+#     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     
 class Question(models.Model):
     quizzes = models.ManyToManyField(Quiz, related_name='questions')
@@ -557,8 +563,7 @@ class QuizAttemptHistory(models.Model):
 # class QuizQuestion(models.Model):
 #     quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE)
 #     question = models.ForeignKey(Question, on_delete=models.CASCADE)
-#     # Additional fields specific to the relationship
-#     active = models.BooleanField(default=True)
+
     
 class Progress(models.Model):
     pass

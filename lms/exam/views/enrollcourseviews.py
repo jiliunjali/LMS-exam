@@ -15,10 +15,6 @@ from exam.models.allmodels import (
     Question,
     QuizAttemptHistory
 )
-# from exam.serializers import (
-#     CostumerDisplaySerializer,
-#     CourseDisplaySerializer,
-# )
 from django.views.generic import (
     DetailView,
     ListView,
@@ -34,7 +30,15 @@ from exam.forms import (
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404, render, redirect
 from django.utils.decorators import method_decorator
-# from exam.models.coremodels import *
+
+from exam.serializers.enrollcourseserializers import (
+    AssignCourseEnrollmentSerializer, 
+    CourseEnrollmentSerializer, 
+    RegisteredCourseSerializer, 
+    UnAssignCourseEnrollmentSerializer, 
+    UserSerializer
+)
+from exam.models.coremodels import *
 
 # for enrollment feature
 # will be displayed to employer/client-admin only
@@ -57,7 +61,32 @@ class RegisteredCourseListView(APIView):
                     and list of course_ids will be made
                     list of course_ids will be used to retrieve the list of course titles associated with it from course table.
     '''
-    pass
+    def get(self, request, format=None):
+        try:
+            # Get the customer ID from the request user
+            customer_id = request.user.customer.id
+        except AttributeError:
+            # Handle cases where the user might not have an associated customer
+            return Response({"error": "No associated customer found for user."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Filter CourseRegisterRecord based on customer ID to get the list of course IDs
+        registered_courses_ids = CourseRegisterRecord.objects.filter(customer_id=customer_id).values_list('course_id', flat=True)
+
+        if not registered_courses_ids:
+            # If no registered courses are found, return a 404
+            return Response({"error": "No registered courses found for the given customer."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Get the list of courses based on the course IDs
+        courses = Course.objects.filter(id__in=registered_courses_ids)
+        
+        if not courses.exists():
+            # If no courses are found with the given IDs (shouldn't happen, but good to check)
+            return Response({"error": "No courses found."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Serialize the course data
+        serializer = RegisteredCourseSerializer(courses, many=True)
+
+        return Response(serializer.data)
 
 class UserListForEnrollment(APIView):
     """
@@ -78,7 +107,20 @@ class UserListForEnrollment(APIView):
                     and list of course_ids will be made
                     list of course_ids will be used to retrieve the list of course titles associated with it from course table.
     '''
-    pass
+    def get(self, request):
+        # Extract user from the request
+        user = request.user
+
+        # Retrieve the customer_id from the user
+        customer_id = user.customer_id
+
+        # Filter User objects based on the customer_id
+        users = User.objects.filter(customer_id=customer_id)
+
+        # Serialize the user data
+        serialized_users = UserSerializer(users, many=True)
+
+        return Response(serialized_users.data)
 
 class CreateCourseEnrollmentView(APIView):
     """
@@ -95,7 +137,28 @@ class CreateCourseEnrollmentView(APIView):
                         each course in list will be mapped for all users in list inside CourseEnrollment table
                         by default active will be true
     """
-    pass
+    def get(self, request):
+        # Extract user from the request
+        user = request.user
+
+        try:
+            # Retrieve the customer_id from the user
+            customer_id = user.customer_id
+        except AttributeError:
+            # Handle cases where the user might not have a customer_id
+            return Response({"error": "The requesting user does not have an associated customer ID."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Filter User objects based on the customer_id
+        users = User.objects.filter(customer_id=customer_id)
+
+        if not users:
+            # Handle cases where no users are found with the same customer_id
+            return Response({"error": "No users found with the same customer ID."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Serialize the user data
+        serialized_users = UserSerializer(users, many=True)
+
+        return Response(serialized_users.data)
 
 class DisplayCourseEnrollmentView(APIView):
     """
@@ -112,7 +175,26 @@ class DisplayCourseEnrollmentView(APIView):
                     enrolled_at,
                     active
     """
-    pass
+    def get(self, request):
+        try:
+            # Retrieve all CourseEnrollment instances
+            enrollments = CourseEnrollment.objects.all()
+
+            # Check if the enrollments queryset is empty
+            if not enrollments:
+                return Response({"message": "No course enrollments found."}, status=status.HTTP_404_NOT_FOUND)
+
+            # Serialize the data using the serializer
+            serializer = CourseEnrollmentSerializer(enrollments, many=True)
+
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except CourseEnrollment.DoesNotExist:
+            # Handle the case where the CourseEnrollment table is unexpectedly empty
+            # Note: This is more theoretical, as .all() typically won't raise DoesNotExist
+            return Response({"error": "No enrollments found."}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            # Handle unexpected errors
+            return Response({"error": f"An unexpected error occurred: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class UnAssignCourseEnrollmentView(APIView):
     """
@@ -126,8 +208,38 @@ class UnAssignCourseEnrollmentView(APIView):
     It is triggered with POST request.
     
     """
-    def post(self,request, *args, **kwargs):
-        pass
+    def post(self, request, *args, **kwargs):
+        try:
+            # Deserialize and validate the input data
+            serializer = UnAssignCourseEnrollmentSerializer(data=request.data)
+            if serializer.is_valid():
+                enrollment_ids = serializer.validated_data.get('enrollment_ids')
+                # Check if any enrollment IDs were provided
+                if not enrollment_ids:
+                    return Response({'error': 'No enrollment IDs provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+                # Check if all provided enrollment IDs are integers
+                invalid_ids = [id for id in enrollment_ids if not isinstance(id, int)]
+                if invalid_ids:
+                    return Response({'error': 'Invalid enrollment IDs provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+                # Check if any provided enrollment IDs are not found in the database
+                enrollments = CourseEnrollment.objects.filter(id__in=enrollment_ids)
+                if len(enrollments) != len(enrollment_ids):
+                    return Response({'error': 'One or more enrollment IDs do not exist'}, status=status.HTTP_404_NOT_FOUND)
+
+                # Update active status to False for the specified enrollments
+                updated_count = enrollments.update(active=False)
+
+                if updated_count > 0:
+                    return Response({'message': f'Courses unassigned successfully. {updated_count} enrollments updated.'}, status=status.HTTP_200_OK)
+                else:
+                    return Response({'error': 'None of the provided enrollment IDs are active'}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 class AssignCourseEnrollmentView(APIView):
     """
@@ -141,5 +253,35 @@ class AssignCourseEnrollmentView(APIView):
     It is triggered with POST request.
     
     """
-    def post(self,request, *args, **kwargs):
-        pass
+    def post(self, request, *args, **kwargs):
+        serializer = AssignCourseEnrollmentSerializer(data=request.data)
+        try:
+            if serializer.is_valid():
+                enrollment_ids = serializer.validated_data.get('enrollment_ids', [])
+
+                # Validate input
+                if not enrollment_ids:
+                    return Response({'error': 'No enrollment IDs provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+                # Attempt to update active status to True for the specified enrollments
+                # Filter for enrollments that are inactive and match the provided IDs
+                enrollments_to_update = CourseEnrollment.objects.filter(id__in=enrollment_ids, active=False)
+
+                # Check if there are actually enrollments to update
+                if not enrollments_to_update.exists():
+                    return Response({'error': 'No valid enrollments found to update. They may not exist or are already active.'}, status=status.HTTP_404_NOT_FOUND)
+
+                # If there are enrollments to update, proceed with the update
+                updated_count = enrollments_to_update.update(active=True)
+
+                # Optionally, check if the updated count matches the expected number of IDs provided (if needed)
+                # This is an additional step to provide more detailed feedback
+                if updated_count != len(enrollment_ids):
+                    return Response({'warning': 'Some enrollments were not updated because they did not exist or were already active.',
+                                    'updated_count': updated_count}, status=status.HTTP_206_PARTIAL_CONTENT)
+
+                return Response({'message': 'Course(s) assigned successfully', 'updated_count': updated_count}, status=status.HTTP_200_OK)
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

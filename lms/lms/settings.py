@@ -84,7 +84,7 @@ WSGI_APPLICATION = 'lms.wsgi.application'
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql_psycopg2",
-        "NAME": 'LMS_exam',#os.getenv("DB_NAME"),
+        "NAME": 'LMS',#os.getenv("DB_NAME"),
         "USER": 'postgres',#os.getenv("DB_USER"),
         "PASSWORD": 'password',#os.getenv("DB_PASSWORD"),
         "HOST": 'localhost',#os.getenv("DB_HOST", default="localhost"),

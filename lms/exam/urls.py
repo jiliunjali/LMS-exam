@@ -47,6 +47,15 @@ from .views.createcourseviews import (
     CreateChoiceView,
     ActivateCourseView,
     InActivateCourseView,
+    CreateNewVersionCourseView
+)
+from .views.editcourseviews import (
+    EditCourseInstanceDetailsView,
+    EditReadingMaterialView,
+    EditVideoMaterialView,
+    EditQuizDetailView,
+    EditExistingQuestionDetailsView,
+    EditQuestionChoicesView
 )
 
 urlpatterns = [
@@ -96,6 +105,10 @@ urlpatterns = [
     path('create/question/<int:question_id>/choices/', CreateChoiceView.as_view(), name='create-question-choice'),
     path('active/course/<int:course_id>/', ActivateCourseView.as_view(), name='activate-course'),
     path('inactive/course/<int:course_id>/', InActivateCourseView.as_view(), name='inactivate-course'),
+    path('create/course/<int:course_id>/versions/', CreateNewVersionCourseView.as_view(), name='create-course-v1'),
+
+    
+    #editcourseviews.py views url
     
     
 

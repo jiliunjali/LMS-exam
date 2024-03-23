@@ -1,3 +1,4 @@
+from django.utils import timezone
 from django.shortcuts import get_object_or_404, render
 from rest_framework import status
 from django.contrib import messages
@@ -8,6 +9,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework import generics
 from exam.models.allmodels import (
     Course,
+    UploadVideo,
+    UploadReadingMaterial,
+    CourseStructure,
     CourseRegisterRecord,
     CourseEnrollment,
     Progress,
@@ -35,6 +39,18 @@ from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404, render, redirect
 from django.utils.decorators import method_decorator
 # from exam.models.coremodels import *
+from exam.serializers.createcourseserializers import (
+    CourseSerializer, 
+    CourseStructureSerializer, 
+    UploadReadingMaterialSerializer, 
+    UploadVideoSerializer, 
+    QuizSerializer, 
+    CreateCourseSerializer,
+    CreateUploadReadingMaterialSerializer,
+    CreateUploadVideoSerializer,
+    CreateQuizSerializer,
+)
+
 
 class CreateCourseView(APIView):
     """
@@ -57,7 +73,24 @@ class CreateCourseView(APIView):
                     version_number = 1
         and instance is saved
     """
-    pass
+    def post(self, request, *args, **kwargs):        
+        # Extract data from request body
+        data = request.data
+        
+        # Create new course instance
+        serializer = CreateCourseSerializer(data=data)
+        if serializer.is_valid():
+            # Set additional fields
+            serializer.validated_data['active'] = False
+            serializer.validated_data['original_course'] = None
+            serializer.validated_data['version_number'] = 1
+            
+            # Save the instance
+            course = serializer.save()
+            
+            return Response({"message": "Course created successfully", "course_id": course.pk}, status=status.HTTP_201_CREATED)
+        else:
+            return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 class CreateReadingMaterialView(APIView):
     """
@@ -69,14 +102,72 @@ class CreateReadingMaterialView(APIView):
         
         table : UploadReadingMaterial
         
-        while creating instance :
-                    title = request body
-                    courses = id in url
-                    reading_content = request body
-                    uploaded_at = updated_at = models.DateTimeField(auto_now=True, auto_now_add=False, null=True)
-        and instance is saved
+        if course.original_course is null :
+            while creating instance :
+                        title = request body
+                        courses = id in url
+                        reading_content = request body
+                        uploaded_at = updated_at = models.DateTimeField(auto_now=True, auto_now_add=False, null=True)
+            and instance is saved
+        if if course.original_course is not null :
+            while creating instance :
+                        title = request body
+                        courses = id in url
+                        reading_content = request body
+                        uploaded_at = updated_at = models.DateTimeField(auto_now=True, auto_now_add=False, null=True)
+            and instance is saved
+            and 
+            in CourseStructure table, make new instance with :
+                    course = in url
+                    order_number = filter last entry allociated with this course in courseStructure table and it's order number , and increment it by 1 for here
+                    content_type = reading
+                    content_id = pk of newly created instance of readingmaterial
+            
     """
-    pass
+    def post(self, request, course_id, *args, **kwargs):
+        # Check if course exists
+        try:
+            course = Course.objects.get(pk=course_id)
+        except Course.DoesNotExist:
+            return Response({"error": "Course not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Extract data from request body
+        data = request.data
+        
+        # Validate and save reading material
+        serializer = CreateUploadReadingMaterialSerializer(data=data)
+        if serializer.is_valid():
+            # Set additional fields
+            serializer.validated_data['courses'] = [course_id]
+            
+            # Save the reading material instance
+            reading_material = serializer.save()
+            
+            # If original_course is null, only save reading material
+            if course.original_course is None:
+                return Response({"message": "Reading material created successfully"}, status=status.HTTP_201_CREATED)
+            else:
+                # If original_course is not null, also create a CourseStructure entry
+                try:
+                    last_order_number = CourseStructure.objects.filter(course=course).latest('order_number').order_number
+                except CourseStructure.DoesNotExist:
+                    last_order_number = 0
+                
+                # Create new CourseStructure instance
+                course_structure_data = {
+                    'course': course_id,
+                    'order_number': last_order_number + 1,
+                    'content_type': 'reading',
+                    'content_id': reading_material.pk
+                }
+                course_structure_serializer = CourseStructureSerializer(data=course_structure_data)
+                if course_structure_serializer.is_valid():
+                    course_structure_serializer.save()
+                    return Response({"message": "Reading material created successfully"}, status=status.HTTP_201_CREATED)
+                else:
+                    return Response({"error": course_structure_serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 class CreateVideoView(APIView):
     """
@@ -87,16 +178,78 @@ class CreateVideoView(APIView):
         in URL : course_id in which we are inputting the content will be passed
         
         table :  UploadVideo
-        
-        while creating instance :
+
+        if course.original_course is null :
+            while creating instance :
+                    title = request body
                     slug = auto generated by pre_save
                     courses = id in url
                     video = request body
                     summary = request body
                     uploaded_at = auto now
-        and instance is saved
+            and instance is saved
+        if if course.original_course is not null :
+            while creating instance :
+                    title = request body
+                    slug = auto generated by pre_save
+                    courses = id in url
+                    video = request body
+                    summary = request body
+                    uploaded_at = auto now
+            and instance is saved
+            and 
+            in CourseStructure table, make new instance with :
+                    course = in url
+                    order_number = filter last entry allociated with this course in courseStructure table and it's order number , and increment it by 1 for here
+                    content_type = video
+                    content_id = pk of newly created instance of video 
+            
     """
-    pass
+    def post(self, request, course_id, *args, **kwargs):
+
+        # Check if course exists
+        try:
+            course = Course.objects.get(pk=course_id)
+        except Course.DoesNotExist:
+            return Response({"error": "Course not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Extract data from request body
+        data = request.data
+        
+        # Validate and save video
+        serializer = CreateUploadVideoSerializer(data=data)
+        if serializer.is_valid():
+            # Set additional fields
+            serializer.validated_data['courses'] = [course_id]
+            
+            # Save the video instance
+            video = serializer.save()
+            
+            # If original_course is null, only save video
+            if course.original_course is None:
+                return Response({"message": "Video created successfully"}, status=status.HTTP_201_CREATED)
+            else:
+                # If original_course is not null, also create a CourseStructure entry
+                try:
+                    last_order_number = CourseStructure.objects.filter(course=course).latest('order_number').order_number
+                except CourseStructure.DoesNotExist:
+                    last_order_number = 0
+                
+                # Create new CourseStructure instance
+                course_structure_data = {
+                    'course': course_id,
+                    'order_number': last_order_number + 1,
+                    'content_type': 'video',
+                    'content_id': video.pk
+                }
+                course_structure_serializer = CourseStructureSerializer(data=course_structure_data)
+                if course_structure_serializer.is_valid():
+                    course_structure_serializer.save()
+                    return Response({"message": "Video created successfully"}, status=status.HTTP_201_CREATED)
+                else:
+                    return Response({"error": course_structure_serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 class CreateQuizView(APIView):
     """
@@ -107,19 +260,86 @@ class CreateQuizView(APIView):
         in URL : course_id in which we are inputting the content will be passed
         
         table : Quiz
-        
-        while creating instance :
+
+        if course.original_course is null :
+            while creating instance :
                     courses = id in url
                     title = request body
                     slug = auto generated by pre_save
+                    random_order = request body
+                    description = request body
+                    answers_at_end = request body
+                    exam_paper = t/f from request body
+                    pass_mark = request body
+                    created_at = updated_at = models.DateField(auto_now=True)
+                    active = False by default
+            and instance is saved
+        if if course.original_course is not null :
+            while creating instance :
+                    courses = id in url
+                    title = request body
+                    slug = auto generated by pre_save
+                    description = request body
                     random_order = request body
                     answers_at_end = request body
                     exam_paper = t/f from request body
                     pass_mark = request body
                     created_at = updated_at = models.DateField(auto_now=True)
                     active = False by default
+            and instance is saved
+            and 
+            in CourseStructure table, make new instance with :
+                    course = in url
+                    order_number = filter last entry allociated with this course in courseStructure table and it's order number , and increment it by 1 for here
+                    content_type = quiz
+                    content_id = pk of newly created instance of quiz 
     """
-    pass
+    def post(self, request, course_id, *args, **kwargs):
+        # Check if course exists
+        try:
+            course = Course.objects.get(pk=course_id)
+        except Course.DoesNotExist:
+            return Response({"error": "Course not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Extract data from request body
+        data = request.data
+        
+        # Validate and save quiz
+        data['courses'] = [course_id]
+        serializer = QuizSerializer(data=data)
+        if serializer.is_valid():
+            # Set additional fields
+            # serializer.validated_data['courses'] = [course_id]
+            
+            # Save the quiz instance
+            quiz = serializer.save()
+            # quiz.courses.add(course)
+            
+            # If original_course is null, only save quiz
+            if course.original_course is None:
+                return Response({"message": "Quiz created successfully"}, status=status.HTTP_201_CREATED)
+            else:
+                # If original_course is not null, also create a CourseStructure entry
+                try:
+                    last_order_number = CourseStructure.objects.filter(course=course).latest('order_number').order_number
+                except CourseStructure.DoesNotExist:
+                    last_order_number = 0
+                
+                # Create new CourseStructure instance
+                course_structure_data = {
+                    'course': course_id,
+                    'order_number': last_order_number + 1,
+                    'content_type': 'quiz',
+                    'content_id': quiz.pk
+                }
+                course_structure_serializer = CourseStructureSerializer(data=course_structure_data)
+                if course_structure_serializer.is_valid():
+                    course_structure_serializer.save()
+                    return Response({"message": "Quiz created successfully"}, status=status.HTTP_201_CREATED)
+                else:
+                    return Response({"error": course_structure_serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 class CreateCourseStructureForCourseView(APIView):
     """
@@ -129,7 +349,7 @@ class CreateCourseStructureForCourseView(APIView):
         
         in URL : course_id in which we are inputting the content will be passed
         
-        table : Quiz
+        table : CourseStructure
         
         while creating instance :
                     course = in url
@@ -141,11 +361,52 @@ class CreateCourseStructureForCourseView(APIView):
     how will we do it :
                     first check if len of order_number = content_type = content_id list is same that is passed in request body
                     for course id passed in url , 
-                    - - -
-                    * * *
+                    if :
+                                        course = 3
+                    order_number = [1,2,3]
+                    content_type = [reading, video , quiz]
+                    content_id = [12,34,2]
+                    
+                    table will be like :
+                    id course order_number content_type content_id
+                    1 3 1 reading 12
+                    2 3 2 video 34
+                    3 3 3 quiz 2
                     set will be filled.
     '''
-    pass
+    def post(self, request, course_id, *args, **kwargs):
+        # Check if course exists
+        try:
+            course = Course.objects.get(pk=course_id)
+        except Course.DoesNotExist:
+            return Response({"error": "Course not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Extract data from request body
+        order_numbers = request.data.get('order_number', [])
+        content_types = request.data.get('content_type', [])
+        content_ids = request.data.get('content_id', [])
+        
+        # Check if lengths of lists are same
+        if len(order_numbers) != len(content_types) or len(content_types) != len(content_ids):
+            return Response({"error": "Length of order_number, content_type, and content_id lists must be the same"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Create CourseStructure instances
+        course_structure_data = []
+        for order_number, content_type, content_id in zip(order_numbers, content_types, content_ids):
+            data = {
+                'course': course_id,
+                'order_number': order_number,
+                'content_type': content_type,
+                'content_id': content_id
+            }
+            course_structure_data.append(data)
+        
+        serializer = CourseStructureSerializer(data=course_structure_data, many=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "Course structure created successfully"}, status=status.HTTP_201_CREATED)
+        else:
+            return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 class CreateQuestionView(APIView):
     """
@@ -168,6 +429,7 @@ class CreateQuestionView(APIView):
                                                                 ask if we want change to be reflected in others too, like earlier versions?
                                                                                         if yes:
                                                                                                 edit the same instance of quiz.
+                                                                                                by adding new question instance and passing quiz id in url to it for relation in quizquestion table.
                                                                                         if not:
                                                                                                 check if request body is empty or not?
                                                                                                             if no :
@@ -210,8 +472,15 @@ class ActivateCourseView(APIView):
         trigger with POST request.
         in URL : course_id of selected instance.
         table : Course
+        if original_course field is null for this course_id 's instance:
         updating instance field:
                     change active from False to True
+        if not null :
+                compare course structure for (content_type + content_id) of course_id in url and id of course which is mentioned in original_course.
+                if match :
+                        can't activate the course
+                if not match:
+                        activate the course by changing active from False to True
     """
     pass
 
@@ -221,8 +490,97 @@ class InActivateCourseView(APIView):
         trigger with POST request.
         in URL : course_id of selected instance.
         table : Course
+        
+        do it by giving warning by counting the number of instances in course enrollment table where course_id is same as that in url and active is True. [to tell how many people are studying the course now]
+        
         updating instance field:
                     change active from True to False        
     """
     pass
 
+# =================================================================
+            # Version Part
+# =================================================================
+class CreateNewVersionCourseView(APIView):
+    """
+    view to create new version of already existing active course
+    
+    in url : course_id of selected instance , whoes versioning we are going to do , and feed it as orginial course in newly created instance.
+    
+    table : Course, Course Structure , [UploadReadingMaterial , UploadVideo , Quiz] their tables where they are in many to many relation with courses
+    
+    on saving , new instance of course will be created :
+                slug = auto generated
+                title = same as course in url for now
+                summary = same as course in url for now
+                created_at = updated_at = now()
+                active = False
+                original_course = course id in url
+                version_number = count the instances for which course_id in url is originalcourse, and add 2 to that count, and pass it as version_number
+    in course_structure table , taking the course_id from url, and id of newly created instance:
+            copy what is related to id in url to new instance.
+    similarly for all readingmaterial, video , quiz which are in relation with course_id in url , will be mapped with new instance too
+    """
+    def post(self, request, course_id, *args, **kwargs):
+        try:
+            original_course = Course.objects.get(pk=course_id)
+            if not original_course.active:
+                return Response({"error": "The original course is not active"}, status=status.HTTP_400_BAD_REQUEST)
+        except Course.DoesNotExist:
+            return Response({"error": "Original course not found."}, status=status.HTTP_404_NOT_FOUND)
+        
+        try:
+            with transaction.atomic():
+                # Create new course instance based on original course
+                new_course_data = {
+                    'title': original_course.title,
+                    'summary': original_course.summary,
+                    'active': False,
+                    'original_course': original_course.id,
+                    'created_at': timezone.now(),
+                    'updated_at': timezone.now(),
+                    'version_number': Course.objects.filter(original_course=original_course).count() + 2
+                }
+                new_course_serializer = CourseSerializer(data=new_course_data)
+                if new_course_serializer.is_valid():
+                    new_course = new_course_serializer.save()
+                else:
+                    return Response({"error": new_course_serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+                
+                # Copy related UploadReadingMaterial
+                related_reading_materials = UploadReadingMaterial.objects.filter(courses=original_course)
+                for material in related_reading_materials:
+                    material_data = UploadReadingMaterialSerializer(material).data
+                    material_data['courses'] = [new_course.pk]
+                    material_serializer = UploadReadingMaterialSerializer(data=material_data)
+                    if material_serializer.is_valid():
+                        material_serializer.save()
+                    else:
+                        return Response({"error": material_serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+                    
+                # Copy related UploadVideo
+                related_videos = UploadVideo.objects.filter(courses=original_course)
+                for video in related_videos:
+                    video_data = UploadVideoSerializer(video).data
+                    video_data['courses'] = [new_course.pk]
+                    video_serializer = UploadVideoSerializer(data=video_data)
+                    if video_serializer.is_valid():
+                        video_serializer.save()
+                    else:
+                        return Response({"error": video_serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+                    
+                # Copy related Quiz
+                related_quizzes = Quiz.objects.filter(courses=original_course)
+                for quiz in related_quizzes:
+                    quiz_data = QuizSerializer(quiz).data
+                    quiz_data['courses'] = [new_course.pk]
+                    quiz_serializer = QuizSerializer(data=quiz_data)
+                    if quiz_serializer.is_valid():
+                        quiz_serializer.save()
+                    else:
+                        return Response({"error": quiz_serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+            
+            return Response({"message": "New version of course created successfully."}, status=status.HTTP_201_CREATED)
+        
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

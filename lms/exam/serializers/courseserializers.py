@@ -20,7 +20,7 @@ class CourseDisplaySerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Course
-        fields = ['id', 'slug', 'title', 'created_at', 'updated_at', 'active', 'original_course', 'version_number']
+        fields = ['id', 'title', 'created_at', 'updated_at', 'active', 'original_course', 'version_number']
         
 class ClientAdminRegisteredCourseDisplaySerializer(serializers.ModelSerializer):
     original_course = serializers.CharField(source='original_course.title', read_only=True)
